@@ -3,12 +3,14 @@
 
 import pytino
 
-def _impl(_targ, _get):
+def _impl(_get):
+	# Nuke a secondary invocation, the first invocation wins
+	pytino.introspection._impl = lambda x: None
+
 	_mod = None
-	targ = pytino.introspection
-	
+
 	def set(name, prefix, what):
-		targ.__setattr__(name, _get(_mod, prefix, _mod+what))
+		pytino.introspection.__setattr__(name, _get(_mod, prefix, _mod+what))
 
 	_mod = 'select'
 

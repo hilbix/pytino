@@ -1,7 +1,9 @@
 # Python introspection to some standard libraries and more
 # This is the version which is slow on runtime but faster on init time
+#
+# run this like
+# python -m pytino/introspection/fast
 
-import pytino
 from pytino import clo
 from pytino import introspection
 
@@ -19,7 +21,7 @@ def get(module, prefix, what):
                 return 'unknown {0} {1}'.format(module+what, key)
         return getter
 
-introspection._impl(__name__, get)
+introspection._impl(get)
 
 if __name__ == '__main__':
 	print introspection.sockAF(1)
