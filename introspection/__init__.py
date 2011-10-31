@@ -1,10 +1,12 @@
 # Python introspection to some standard libraries and more
 # Warning, this is somewhat slow at init time, but later very fast
 
-def _impl(targ, _get):
-	_mod = None
-	targ = __import__(targ)
+import pytino
 
+def _impl(_targ, _get):
+	_mod = None
+	targ = pytino.introspection
+	
 	def set(name, prefix, what):
 		targ.__setattr__(name, _get(_mod, prefix, _mod+what))
 

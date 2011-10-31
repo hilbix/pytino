@@ -1,7 +1,14 @@
 # Python introspection to some standard libraries and more
 # Warning, this is somewhat slow at init time, but later very fast
+#
+# run this like
+# python -m pytino/introspection/fast
 
-import introspection_impl
-from clo import moduledictgetter
+import pytino
+from pytino import clo
+from pytino import introspection
 
-introspection_impl._impl(__name__, lambda m,p,w: moduledictgetter(m, p, w))
+introspection._impl(__name__, lambda m,p,w: clo.moduledictgetter(m, p, w))
+
+if __name__ == '__main__':
+        print introspection.sockAF(1)
