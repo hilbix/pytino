@@ -14,11 +14,16 @@ def get(module, prefix, what):
 			mod[0] = __import__(module)
 		for x in filter(startswith(prefix), dir(mod[0])):
 			if key==getattr(mod[0],x):
-				return key;
+				return x
                 return 'unknown {0} {1}'.format(module+what, key)
         return getter
 
 introspection_impl._impl(__name__, get)
 
 if __name__ == '__main__':
+	# Note that if you do
+	# import pytino.introspection_slow
+	# this populates these functions into pytino
+	# I really have no idea why.
+	# __import__('pytino.introspection_slow') gives me the module 'pytino'
 	print sockAF(1)

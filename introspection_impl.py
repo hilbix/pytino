@@ -10,8 +10,8 @@ def _impl(targ, _get):
 
 	_mod = 'select'
 
-	set('selepoll',    'EPOLL',    '.epoll')
-	set('selpoll',     'POLL',     '.poll')
+	set('selEPOLL',    'EPOLL',    '.epoll')
+	set('selPOLL',     'POLL',     '.poll')
 	
 	_mod = 'os'
 	
