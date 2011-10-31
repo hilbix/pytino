@@ -22,9 +22,8 @@ def sane(name, level=None):
 	if env:
 		try:	level = int(env)
 		except:	level = getattr(logging, env, None)
-	if level is None:
-		if not isinstance(level, int):
-			level	= logging.INFO
+	if not isinstance(level, int):
+		level	= logging.INFO
 	logging.basicConfig(level=level, format='%(asctime)s %(name)s %(levelname)-8s %(message)s', datefmt='%Y%m%d-%H%M%S')
 
 	# BUG: Timezone is missing in timestamps by default (the ISO8601 isn't ISO8601 compliant)
