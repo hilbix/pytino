@@ -1,5 +1,5 @@
 #
-# Sorry, logging in Pythin is far too complex
+# Sorry, logging in Python is far too complex
 #
 # This is a sane logging handler:
 # - Allows to specify the logging level in the environment (0 is DEBUG, 99 is off, probably)
