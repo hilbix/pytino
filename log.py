@@ -17,21 +17,41 @@ import logging
 # This is a log wrapper
 __LOGWRAPPER__	= logging
 
-disabled= False
+disabled = False
 
 # WTF?  Why is this missing?
 __module__ = sys.modules[__name__]
 
 def __setup__():	# Do not pollute globals()
+	# Only run once
+	__module__.__setup__ = lambda: None
+	if hasattr(logging, '__LOGWRAPPER__') and logging.__LOGWRAPPER__ == logging: return
+
+	#
+	# Below only runs once:
+	#
+
+	logging.addLevelName(1, 'ALL')	# this does not define logging.ALL as it should
+	logging.ALL = 1
+
+	# Now fix some of the most obvious fatal design errors in logging
+
+	# WTF?  Blanks in a column of traditionally blank separated fields?  NO WAY!  FIX!
+	logging.getLevelName = lambda level: logging._levelToName.get(level, logging._nameToLevel.get(level, ("LEVEL_%s" % level)))
+
+	# Eliminate stackframes from wrapper modules
+	logging.__LOGWRAPPER__ = logging
+	logging.currentframe = removeWrapperFrames(logging.currentframe)
+
 	# Why isn't there an ENV var which let us overwrite the level?
 	# Why has this be done by yourself parsing options or even more crappy things?
-	level	= INFO
+	level	= None
 	env	= os.getenv('PYTHON_LOG_LEVEL')
 	if env:
 		try:	level = int(env)
 		except:	level = getattr(__module__, env, None)
 	if not isinstance(level, int):
-		level	= logging.INFO
+		level	= INFO
 	logging.basicConfig(level=level, format='%(asctime)s %(name)s %(filename)s:%(lineno)s %(funcName)s %(levelname)s %(message)s', datefmt='%Y%m%d-%H%M%S')
 
 	# BUG: Timezone is missing in timestamps by default (the ISO8601 isn't ISO8601 compliant)
@@ -46,6 +66,7 @@ def __setup__():	# Do not pollute globals()
 	env = os.getenv('PYTHON_LOG_FILE')
 	if env:
 		logging.getLogger().addHandler(logging.FileHandler(env,'a'))
+
 
 def level(level):
 	if level == NONE:
@@ -113,7 +134,6 @@ def removeWrapperFrames(currentframe):
 	(However this comes with a performance penalty at low debug levels.)
 	"""
 
-	# This is way faster than the solution found in logging.
 	def wrap():
 		c	= currentframe()
 		f	= c
@@ -131,7 +151,6 @@ def removeWrapperFrames(currentframe):
 
 NONE	= 0
 ALL	= 1
-logging.addLevelName(1, 'ALL')	# this does not define logging.ALL as it should
 DEBUG	= logging.DEBUG
 INFO	= logging.INFO
 WARNING	= logging.WARNING
@@ -144,15 +163,6 @@ def info (*args, **kw):	log(INFO,    *args, **kw)
 def warn (*args, **kw):	log(WARNING, *args, **kw)
 def err  (*args, **kw):	log(ERROR,   *args, **kw)
 def fatal(*args, **kw):	log(FATAL,   *args, **kw)
-
-# Now fix some of the most obvious fatal design errors in logging
-
-# WTF?  Blanks in a column of traditionally blank separated fields?  NO WAY!  FIX!
-logging.getLevelName = lambda level: logging._levelToName.get(level, logging._nameToLevel.get(level, ("LEVEL_%s" % level)))
-
-# Eliminate stackframes from wrapper modules
-logging.__LOGWRAPPER__ = logging
-logging.currentframe = removeWrapperFrames(logging.currentframe)
 
 __setup__()
 
