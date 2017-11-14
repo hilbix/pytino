@@ -6,7 +6,9 @@ import re
 import itertools
 import pytino.log
 
+__LOGLEVEL__ = pytino.log.ALL+1
 log = pytino.log.ll
+
 
 _VALIDNAME	= re.compile(r"^[a-z][a-z0-9_]*$", re.IGNORECASE)
 
