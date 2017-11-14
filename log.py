@@ -32,7 +32,7 @@ def __setup__():	# Do not pollute globals()
 		except:	level = getattr(__module__, env, None)
 	if not isinstance(level, int):
 		level	= logging.INFO
-	logging.basicConfig(level=level, format='%(asctime)s %(name)s %(filename)s %(funcName)s %(levelname)s %(message)s', datefmt='%Y%m%d-%H%M%S')
+	logging.basicConfig(level=level, format='%(asctime)s %(name)s %(filename)s:%(lineno)s %(funcName)s %(levelname)s %(message)s', datefmt='%Y%m%d-%H%M%S')
 
 	# BUG: Timezone is missing in timestamps by default (the ISO8601 isn't ISO8601 compliant)
 	# Logging shall always be done in UTC, to be able to compare server times
@@ -115,7 +115,7 @@ def removeWrapperFrames(currentframe):
 
 NONE	= 0
 ALL	= 1
-#logging.addLevelName(1, 'ALL')	# this does not define logging.ALL as it should
+logging.addLevelName(1, 'ALL')	# this does not define logging.ALL as it should
 DEBUG	= logging.DEBUG
 INFO	= logging.INFO
 WARNING	= logging.WARNING
