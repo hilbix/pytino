@@ -4,6 +4,9 @@
 
 import re
 import itertools
+import pytino.log
+
+log = pytino.log.ll
 
 _VALIDNAME	= re.compile(r"^[a-z][a-z0-9_]*$", re.IGNORECASE)
 
@@ -67,7 +70,7 @@ class Reg:
 		for a in data:
 			if not a in x:
 				x[a] = data[a]
-				print(id, a, data[a])
+				log(id, a, data[a])
 			elif x[a] != data[a]:
 				raise RuntimeError('{}: Redefined property: {} = {} (was {})'.format(name, a, data[a], x[a]))
 
