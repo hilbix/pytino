@@ -49,8 +49,8 @@ class Reg:
 
 	@classmethod
 	def __add__(cls, nr, name, info=None, *args, **kw):
-		if not hasattr(cls, 'keep'):
-			cls.keep = cls._keeper()
+		if not hasattr(cls, '_keep'):
+			cls._keep = cls._keeper()
 
 		id	= cls._id(cls.__name__+'_'+name)
 		if id in cls._glob and cls._glob[id]!=nr:
@@ -66,7 +66,7 @@ class Reg:
 		data	= { 'nr':nr, 'name':name, 'info':info }
 		cls._reg(data, *args, **kw)
 
-		x = cls.keep.get(nr)
+		x = cls._keep.get(nr)
 		for a in data:
 			if not a in x:
 				x[a] = data[a]
@@ -75,11 +75,15 @@ class Reg:
 				raise RuntimeError('{}: Redefined property: {} = {} (was {})'.format(name, a, data[a], x[a]))
 
 	@classmethod
-	def get(cls, nr):
-		return cls.keep.get(nr)
+	def get(cls, nr): return cls._get(nr)
+	@classmethod
+	def _get(cls, nr):
+		return cls._keep.get(nr)
 
 	@classmethod
-	def gets(cls, name, *args, **kw):
+	def gets(cls, name, *args, **kw): return cls._gets(name, *args, **kw)
+	@classmethod
+	def _gets(cls, name, *args, **kw):
 		try:
 			return cls.get(getattr(cls, cls._id(name)))
 		except AttributeError:
@@ -92,6 +96,7 @@ class Reg:
 			elif len(args):
 				return dict(itertools.zip_longest(*[iter(args)]*2))
 			raise
+
 
 # I tried to make this a function,
 # but I failed for unknown reason.
