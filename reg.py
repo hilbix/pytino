@@ -85,7 +85,7 @@ class Reg:
 	@classmethod
 	def _gets(cls, name, *args, **kw):
 		try:
-			return cls.get(getattr(cls, cls._id(name)))
+			return cls._get(getattr(cls, cls._id(name)))
 		except AttributeError:
 			# We do not accept kw + args
 			if kw:
