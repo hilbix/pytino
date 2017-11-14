@@ -72,9 +72,11 @@ def sane(name, level=None):
 
 	return __module__
 
+class NoLoggingException(Exception):	pass
+
 # This is the correct way of logging, as it must be:
 # DO NOT THINK ABOUT ANYTHING.  Just do it.  Period.
-def log(level, *args, **kw):
+def log(__LOGLEVEL__, *args, **kw):
 	if disabled: return
 	j = []
 	for v in args:
@@ -88,8 +90,10 @@ def log(level, *args, **kw):
 		except Exception as e:
 			j.append('(exception '+str(e)+')')
 
-	logging.log(level, "%s", ' '.join(j))
-
+	try:
+		logging.log(__LOGLEVEL__, "%s", ' '.join(j))
+	except NoLoggingException:
+		pass
 
 # This could be improved by re-implementing logging.Logger.findCaller()
 # However I do not like that, as this is very likely to change.
@@ -99,15 +103,27 @@ def removeWrapperFrames(currentframe):
 	ignore the stack for modules, which have a property
 		__LOGWRAPPER__ = logging
 	This is totally safe, because who else would do this?
+
+	Also in modules using this logger, you can set
+		__LOGLEVEL__ = N
+	to skip all output below this minimal global level,
+	such that full debugging needs to be enabled on the module level with
+		modulename.__LOGLEVEL__ = 0
+	for the case this is needed.
+	(However this comes with a performance penalty at low debug levels.)
 	"""
 
 	# This is way faster than the solution found in logging.
 	def wrap():
 		c	= currentframe()
 		f	= c
+		l	= 0
 		while f is not None:
 			if not f.f_globals.get('__LOGWRAPPER__', None) is logging:
+				if f.f_globals.get('__LOGLEVEL__', 0) > l > 0:
+					raise NoLoggingException()
 				return c
+			l = f.f_locals.get('__LOGLEVEL__', l)
 			c = f
 			f = f.f_back
 		return c
