@@ -4,11 +4,10 @@
 
 import re
 import itertools
-import pytino.log
+import pytino.log as log
 
-__LOGLEVEL__ = pytino.log.ALL+1
-log = pytino.log.ll
-
+__LOGLEVEL__ = log.ALL+1
+log = log.ll
 
 _VALIDNAME	= re.compile(r"^[a-z][a-z0-9_]*$", re.IGNORECASE)
 
