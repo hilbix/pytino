@@ -23,6 +23,8 @@
 # log.sane('name', log.ERROR)	# default is log.INFO
 # log.warn('hello', 'world')	# not shown for log.ERROR
 #
+# log.twisted()			# if you use twisted
+#
 # In modules:
 #
 # import pytino.log as log
@@ -30,6 +32,8 @@
 # log.warn(*['suppressed', 'by','__LOGLEVEL__'])
 # log.err('this', 'is', 'shown', 'if',loglevel='ERROR',_or_='below')
 # Note: Sequence of KWs cannot be maintained!
+
+from __future__ import print_function
 
 import os
 import sys
@@ -67,16 +71,21 @@ def __setup__():	# Do not pollute globals()
 	#
 
 	logging.addLevelName(1, 'ALL')	# sad: this does not define logging.ALL
-	logging.ALL = 1
+	logging.ALL	= 1
 
 	# Now fix some of the most obvious fatal design errors in logging
 	# WTF?  Blanks in a column of traditionally blank separated fields?
 	# Patch in some underscore, and write it uppercase as other levels.
-	logging.getLevelName = lambda level: logging._levelToName.get(level, logging._nameToLevel.get(level, ("LEVEL_%s" % level)))
+
+	if getattr(logging, '_levelToName', None) and getattr(logging, '_nameToLevel', None):
+		logging.getLevelName = lambda level: logging._levelToName.get(level, logging._nameToLevel.get(level, ("LEVEL_%s" % level)))
+	else:
+		logging.getLevelName = lambda level: logging._levelNames.get(level, ("LEVEL_%s" % level))
 
 	# Eliminate stackframes from (this and possibly other) wrapper modules
-	logging.__LOGWRAPPER__ = logging
-	logging.currentframe = _removeWrapperFrames(logging.currentframe)
+	logging.__LOGWRAPPER__	= logging
+	logging.currentframe	= _removeWrapperFrames(logging.currentframe)
+	logging.Logger._log	= _ignoreNoLoggingException(logging.Logger._log)
 
 	logging.basicConfig(format=_SANEFORMAT, datefmt=_SANEDATE)
 
@@ -155,7 +164,7 @@ def sane(name, level=None):
 class _NoLoggingException(Exception):	pass
 
 # Not tested with kw yet
-def xlog(__LOGLEVEL__, *args, **kw):
+def xlog(__LOGLEVEL__, s, *args, **kw):
 	'''
 	Use this, if you cannot use log() use xlog() instead of logging.log()!
 	It is a wrapper around logging.log() with the same arguments:
@@ -172,7 +181,7 @@ def xlog(__LOGLEVEL__, *args, **kw):
 	# This probably only works with modules,
 	# which use pytino.log, of course.
 	try:
-		logging.log(__LOGLEVEL__, *args, **kw)
+		logging.log(__LOGLEVEL__, str(s).rstrip(' \t\n\r'), *args, **kw)
 	except _NoLoggingException:
 		pass
 
@@ -201,13 +210,13 @@ def log(level, *args, **kw):
 	# We need some standard escaping here
 	# to allow easy parsing with 3rd party tools
 	# in future
-	xlog(level, "%s", ' '.join(j))
+	xlog(level, "%s", ' '.join(j).rstrip(' \t\n\r'))
 
 
 # This could be improved by re-implementing logging.Logger.findCaller()
 # However I do not like that, as this is very likely to change.
 # Here we just wrap the currentframe, which should be relatively safe.
-def _removeWrapperFrames(currentframe):
+def _removeWrapperFrames(currentframe, same=True):
 	"""
 	ignore the stack for modules, which have a property
 		__LOGWRAPPER__ = logging
@@ -222,20 +231,82 @@ def _removeWrapperFrames(currentframe):
 	(However this comes with a performance penalty at low debug levels.)
 	"""
 
-	def wrap():
-		c	= currentframe()
+	def wrap(*args, **kw):
+		c	= currentframe(*args, **kw)
+		p	= c
 		f	= c
 		l	= 0
-		while f is not None:
+		while not f is None:
 			if not f.f_globals.get('__LOGWRAPPER__', None) is logging:
 				if f.f_globals.get('__LOGLEVEL__', 0) > l > 0:
 					raise _NoLoggingException()
+				if same:	c = f
+#				if __module__.__DEBUGGING__ and c.f_code:
+#					print('@DEBUG@log@', c.f_code.co_filename, file=sys.stderr)
 				return c
 			l = f.f_locals.get('__LOGLEVEL__', l)
+			p = c
 			c = f
 			f = f.f_back
+		if f is None and not same:
+			c = p
 		return c
 	return wrap
+
+
+def _ignoreNoLoggingException(_log):
+	'''
+	Wrap a logging function such, that _NoLoggingException is ignored.
+	In that case the function just returns without doing anything.
+	'''
+	def wrap(c, s, *args, **kw):
+		try:
+			_log(c, str(s).rstrip(' \t\n\r'), *args, **kw)
+		except _NoLoggingException:
+			pass
+	return wrap
+
+
+# Currently only tested with Python2
+def twisted(*args, **kw):
+	'''
+	Enable this module for twisted logging,
+	including patches to improve the output.
+	Please beware as twisted is not prepared for this,
+	because twisted assumes, logging is nonblocking,
+	but python standard logging might block,
+	depending on the configuration.
+
+	You must not have touched twisted.logging before,
+	else it might get the wrong currentframe().
+
+	Currently no workaround is known by me, see my (Tino's) comment at
+	https://stackoverflow.com/a/2493725
+	'''
+
+	import twisted.logger		as t0
+	import twisted.logger._legacy	as t1
+	import twisted.logger._logger	as t2
+	import twisted.logger._observer	as t3
+	import twisted.logger._stdlib	as ts	# must be: t4=_stdlib
+	import twisted.python.log	as p0
+	import twisted.python.threadable as p1
+
+	if hasattr(t0, '__LOGWRAPPER__'):	return	# looks like already patched
+
+	# Ignore all those in logging
+	for a in (t0, t1, t2, t3, ts, p0, p1):
+		a.__LOGWRAPPER__	= logging
+
+	# Patch in our stackframe hack
+	ts.currentframe =	_removeWrapperFrames(ts.currentframe, same=True)
+
+	if args or kw:
+		sane(*args, **kw)
+
+	ll("Twisted logging enabled")
+
+	return __module__
 
 
 NONE	= 0
@@ -246,6 +317,7 @@ WARNING	= logging.WARNING
 ERROR	= logging.ERROR
 FATAL	= logging.FATAL
 
+
 # And here some convenience wrappers:
 # Note that they dump their keywords,
 # if you need stackframes etc. use xlog()!
@@ -255,6 +327,7 @@ def info (*args, **kw):	log(INFO,    *args, **kw)
 def warn (*args, **kw):	log(WARNING, *args, **kw)
 def err  (*args, **kw):	log(ERROR,   *args, **kw)
 def fatal(*args, **kw):	log(FATAL,   *args, **kw)
+
 
 # Do all the patching stuff, once for a lifetime.
 __setup__()
