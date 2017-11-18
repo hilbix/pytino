@@ -12,9 +12,9 @@
 # see file COPYRIGHT.CLL.  USE AT OWN RISK, ABSOLUTELY NO WARRANTY.
 #
 # Prepare:
-#	git submodule add https://github.com/techtonik/python-vnc-viewer.git
+#	git clone https://github.com/hilbix/python-vnc-viewer.git
 #	ln -s python-vnc-viewer/pyDes.py python-vnc-viewer/rfb.py .
-#	python easyrfb.py
+#	./ez2.py host port [password]
 #
 # Usage like:
 #
@@ -29,12 +29,19 @@
 #
 # myRfb(args, ...).run()
 #
-# To set another logging than sys.stdout use: .logging(...).
-# To set another twisted application use:     .application(...).
+# To set another logger than pytino.log.debug:	.logger(...).
+# To set another twisted application use:	.application(...).
 # To not call twisted twisted.internet.reactor.run() use .run() instead
 
 import os
 import sys
+
+try:
+	from .. import log
+except:
+	os.sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
+	import pytino.log as log
+
 import twisted
 import rfb
 
@@ -76,17 +83,18 @@ class FunnelRfbFactory(rfb.RFBFactory):
 		return rfb.RFBFactory.buildProtocol(self, addr)
 
 	def clientConnectionLost(self, connector, reason):
-		print("connection lost:", reason)
+		self.wrap.log("connection lost:", reason)
 		self.wrap.clientConnectionLost(self, connector, reason)
 
 	def clientConnectionFailed(self, connector, reason):
+		self.wrap.log("connection failed:", reason)
 		self.wrap.clientConnectionFailed(self, connector, reason)
 
 # Here we can have everything at one place
 # Easy and simple as it ought to be!
 # With reasonable defaults, ready to use.
 class client(object):
-	def __init__(self, appname='generic RFB client', host=None, port=None, password=None, shared=None):
+	def __init__(self, appname='generic RFB client', host=None, port=None, password=None, shared=None, logger=None):
 
 		if host is None:	host	=     self._preset("EASYRFBHOST", '127.0.0.1')
 		if port is None:	port	= int(self._preset("EASYRFBPORT", '5900'), 0)
@@ -97,7 +105,7 @@ class client(object):
 		self.control	= False
 		self.started	= False
 		self.app	= None
-		self.log	= None
+		self.log	= logger or log.debug
 		self.vnc	= twisted.application.internet.TCPClient(host, port, FunnelRfbFactory(self, password, shared))
 
 	def _preset(self, env, default):
@@ -109,17 +117,14 @@ class client(object):
 		self.app = app
 		return self
 
-	def logging(self, log):
-		self.log = log
+	def logger(self, log):
+		self.log	= log
 		return self
 
 	def start(self):
-		if self.log is None:
-			self.log = sys.stdout
-		if self.log:
-			twisted.python.log.startLogging(self.log)
+		twisted.python.log.PythonLoggingObserver(self.appname.replace(" ","_")).start()
 		self.vnc.setServiceParent(twisted.application.service.Application(self.appname))
-		print("starting service:",self.appname)
+		self.log("starting service:",self.appname)
 		self.vnc.startService()
 		self.started = True
 		return self
@@ -127,56 +132,60 @@ class client(object):
 	def stop(self):
 		if self.started:
 			self.started = False
-			print("stopping service")
+			self.log("stopping service")
 			self.vnc.stopService()
+		return self
 
 	def run(self):
 		self.start()
-		print("starting reactor")
+		self.log("starting reactor")
 		self.control = True
 		twisted.internet.reactor.run()
+		return self
 
 	def halt(self):
 		self.stop()
 		if self.control:
 			self.control = False
-			print("stopping reactor")
+			self.log("stopping reactor")
 			twisted.internet.reactor.stop()
 		return self
 
 	def clientConnectionFailed(self, factory, connector, reason):
-		print("connection failed:", reason)
+		self.log("connection failed:", reason)
 		self.halt()
 
 	def clientConnectionLost(self, factory, connector, reason):
-		print("connection lost:", reason)
+		self.log("connection lost:", reason)
 		self.halt()
 
 	def connectionMade(self, vnc):
-		print("connectionMade")
+		self.log("connectionMade")
 
 	def vncConnectionMade(self, vnc):
-		print("Orig. screen:  %dx%d depth=%d bits_per_pixel=%r bytes_per_pixel=%r" % (vnc.width, vnc.height, vnc.depth, vnc.bpp, vnc.bypp))
-		print("Desktop name:  %r" % vnc.name)
+		self.log("Orig. screen:  %dx%d depth=%d bits_per_pixel=%r bytes_per_pixel=%r" % (vnc.width, vnc.height, vnc.depth, vnc.bpp, vnc.bypp))
+		self.log("Desktop name:  %r" % vnc.name)
 
 		vnc.setEncodings([rfb.RAW_ENCODING])
 		vnc.setPixelFormat()
 
-		print("Screen format: %dx%d depth=%d bits_per_pixel=%r bytes_per_pixel=%r" % (vnc.width, vnc.height, vnc.depth, vnc.bpp, vnc.bypp))
+		self.log("Screen format: %dx%d depth=%d bits_per_pixel=%r bytes_per_pixel=%r" % (vnc.width, vnc.height, vnc.depth, vnc.bpp, vnc.bypp))
 
 		vnc.framebufferUpdateRequest()
 
 	def beginUpdate(self, vnc):
-		print("beginUpdate")
+		self.log("beginUpdate")
 
 	def updateRectangle(self, vnc, x, y, width, height, data):
-		print("updateRectangle %s %s %s %s" % (x, y, width, height))
+		self.log("updateRectangle", x, y, width, height)
 
 	def commitUpdate(self, vnc, rectangles=None):
-		print("commitUpdate %s" % ( repr(rectangles) ))
+		self.log("commitUpdate", rectangles)
 		self.stop()
 
 if __name__=='__main__':
+	log.sane(__name__, 1).twisted()
+
 	# host port password
 	args = {}
 	if len(sys.argv)>1: args["host"    ] = sys.argv[1]
