@@ -48,8 +48,11 @@ disabled = False
 # WTF?  Why is this missing?
 __module__ = sys.modules[__name__]
 
-_SANEFORMAT	= '%(asctime)s %(name)s %(filename)s:%(lineno)s %(funcName)s %(levelname)s %(message)s'
+_SANEFORMAT	= '%(asctime)s %(levelname)s %(name)s %(module)s:%(lineno)s %(funcName)s %(message)s'
+_FULLFORMAT	= '%(asctime)s %(levelname)s %(name)s %(pathname)s:%(lineno)s %(funcName)s %(message)s'
 _SANEDATE	= '%Y%m%d-%H%M%S'
+
+__DEBUGGING__	= False
 
 
 # missing environment test
@@ -59,8 +62,10 @@ def __setup__():	# Do not pollute globals()
 	It sets up everything properly and calls logging.basicConfig() for you.
 	If you want something else, you can call logging.basicConfig() before.
 	Environment:
-		PYTHON_LOG_LEVEL: either a number (level) or 'DEBUG', 'INFO', etc.
-		PYTHON_LOG_FILE: an additional file to log to.
+		PYTHON_LOG_LEVEL:	either a number (level) or 'DEBUG', 'INFO', etc.
+		PYTHON_LOG_FILE:	an additional file to log to.
+		PYTHON_LOG_FORMAT:	set your own logging format
+		PYTHON_LOG_DEBUG:	use full name to filenames in log and further debugging
 	There is a special level 'NONE', which disables logger via this module.
 	'''
 	__module__.__setup__ = lambda: None
@@ -87,7 +92,10 @@ def __setup__():	# Do not pollute globals()
 	logging.currentframe	= _removeWrapperFrames(logging.currentframe)
 	logging.Logger._log	= _ignoreNoLoggingException(logging.Logger._log)
 
-	logging.basicConfig(format=_SANEFORMAT, datefmt=_SANEDATE)
+	if os.getenv('PYTHON_LOG_DEBUG'):
+		__module__.__DEBUGGING__	= True
+
+	logging.basicConfig(datefmt=_SANEDATE, format=os.getenv('PYTHON_LOG_FORMAT') or __module__.__DEBUGGING__ and _FULLFORMAT or _SANEFORMAT)
 
 	# Why isn't there an ENV var which let us overwrite the level?
 	# Why has this to be done by yourself, parsing options or even more crappy?
