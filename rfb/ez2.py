@@ -94,6 +94,24 @@ class FunnelRfbFactory(rfb.RFBFactory, object):
 # Easy and simple as it ought to be!
 # With reasonable defaults, ready to use.
 class Client(object):
+	@classmethod
+	def args(cls, host=None, port=None, password=None, shared=None):
+		"""
+		[host [port [password [[[[shared]
+
+		host	127.0.0.1
+		port	5900
+		pass	(none)
+		shared	1
+		"""
+		args = {}
+		if host:		args["host"    ] = host
+		if port:		args["port"    ] = int(port)
+		if password:		args["password"] = password
+		if not shared is None:	args["shared"  ] = int(shared)
+
+		return args
+
 	def __init__(self, appname='generic RFB client', host=None, port=None, password=None, shared=None, logger=None):
 
 		if host is None:	host	=     self._preset("EASYRFBHOST", '127.0.0.1')
@@ -183,26 +201,10 @@ class Client(object):
 		self.log("commitUpdate", rectangles)
 		self.stop()
 
-def main(client=Client, host=None, port=None, password=None, shared=None):
-	"""
-	[host [port [password [[[[shared]
-
-	host	127.0.0.1
-	port	5900
-	pass	(none)
-	shared	1
-	"""
+def main(cls):
 	log.sane(__name__, 1).twisted()
-
-	args = {}
-	if host:		args["host"    ] = host
-	if port:		args["port"    ] = int(port)
-	if password:		args["password"] = password
-	if not shared is None:	args["shared"  ] = int(shared)
-
-	return client(**args)
+	return cls(**sys.argv[1:])
 
 if __name__=='__main__':
-
-	main(Client, *sys.argv[1:]).run()
+	main(Client)
 
