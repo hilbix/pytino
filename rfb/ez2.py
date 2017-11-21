@@ -20,9 +20,9 @@
 #
 # import pytino.rfb.ez as easyrfb
 #
-# class myRfb(easyrfb.client):
+# class myRfb(easyrfb.Client):
 #	def __init__(self, ..., *args, **kw):
-#		easyrfb.client.__init__(self, *args, **kw)
+#		super(myRfb, self).__init__(*args, **kw)
 #
 #	def whateverfunctionneedsoverrwrite(self, ...):
 #		function
@@ -72,12 +72,12 @@ class FunnelRfbProtocol(rfb.RFBClient):
 		self.factory.wrap.commitUpdate(self, rectangles)
 
 # This just funnels everything to the wrapper
-class FunnelRfbFactory(rfb.RFBFactory):
+class FunnelRfbFactory(rfb.RFBFactory, object):
 	protocol = FunnelRfbProtocol
 
 	def __init__(self, wrapper, password=None, shared=1):
 		self.wrap = wrapper
-		rfb.RFBFactory.__init__(self, password, shared)
+		super(FunnelRfbFactory, self).__init__(password, shared)
 
 	def buildProtocol(self, addr):
 		return rfb.RFBFactory.buildProtocol(self, addr)
@@ -93,7 +93,7 @@ class FunnelRfbFactory(rfb.RFBFactory):
 # Here we can have everything at one place
 # Easy and simple as it ought to be!
 # With reasonable defaults, ready to use.
-class client(object):
+class Client(object):
 	def __init__(self, appname='generic RFB client', host=None, port=None, password=None, shared=None, logger=None):
 
 		if host is None:	host	=     self._preset("EASYRFBHOST", '127.0.0.1')
@@ -183,14 +183,26 @@ class client(object):
 		self.log("commitUpdate", rectangles)
 		self.stop()
 
-if __name__=='__main__':
+def main(client=Client, host=None, port=None, password=None, shared=None):
+	"""
+	[host [port [password [[[[shared]
+
+	host	127.0.0.1
+	port	5900
+	pass	(none)
+	shared	1
+	"""
 	log.sane(__name__, 1).twisted()
 
-	# host port password
 	args = {}
-	if len(sys.argv)>1: args["host"    ] = sys.argv[1]
-	if len(sys.argv)>2: args["port"    ] = int(sys.argv[2])
-	if len(sys.argv)>3: args["password"] = sys.argv[3]
-	if len(sys.argv)>4: args["shared"  ] = int(sys.argv[4])
-	client(**args).run()
+	if host:		args["host"    ] = host
+	if port:		args["port"    ] = int(port)
+	if password:		args["password"] = password
+	if not shared is None:	args["shared"  ] = int(shared)
+
+	return client(**args)
+
+if __name__=='__main__':
+
+	main(Client, *sys.argv[1:]).run()
 
