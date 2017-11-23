@@ -267,9 +267,9 @@ def _ignoreNoLoggingException(_log):
 	Wrap a logging function such, that _NoLoggingException is ignored.
 	In that case the function just returns without doing anything.
 	'''
-	def wrap(c, s, *args, **kw):
+	def wrap(c, l, s, *args, **kw):
 		try:
-			_log(c, str(s).rstrip(' \t\n\r'), *args, **kw)
+			_log(c, l, str(s).rstrip(' \t\n\r'), *args, **kw)
 		except _NoLoggingException:
 			pass
 	return wrap
