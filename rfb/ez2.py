@@ -203,8 +203,8 @@ class Client(object):
 
 def main(cls):
 	log.sane(__name__, 1).twisted()
-	return cls(**sys.argv[1:])
+	return cls(**cls.args(*sys.argv[1:]))
 
 if __name__=='__main__':
-	main(Client)
+	main(Client).run()
 
