@@ -33,14 +33,16 @@
 # To set another twisted application use:	.application(...).
 # To not call twisted twisted.internet.reactor.run() use .run() instead
 
+from __future__ import absolute_import
+
 import os
 import sys
 
 try:
-	from .. import log
+	import pytino.log
 except:
 	os.sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
-	import pytino.log as log
+	import pytino.log
 
 import twisted
 import rfb
@@ -123,7 +125,7 @@ class Client(object):
 		self.control	= False
 		self.started	= False
 		self.app	= None
-		self.log	= logger or log.debug
+		self.log	= logger or pytino.log.debug
 		self.vnc	= twisted.application.internet.TCPClient(host, port, FunnelRfbFactory(self, password, shared))
 
 	def _preset(self, env, default):
@@ -202,7 +204,7 @@ class Client(object):
 		self.stop()
 
 def main(cls):
-	log.sane(__name__, 1).twisted()
+	pytino.log.sane(__name__, 1).twisted()
 	return cls(**cls.args(*sys.argv[1:]))
 
 if __name__=='__main__':
