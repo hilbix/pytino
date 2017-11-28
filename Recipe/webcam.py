@@ -6,6 +6,8 @@
 # Sometimes I get "select timeout" message.
 # Do not know why, perhaps a too dark image?
 
+from __future__ import absolute_import
+
 import opencv 
 import opencv.highgui
 

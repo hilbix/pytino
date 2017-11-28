@@ -9,6 +9,8 @@
 #	ln -s lib/pytino/debug.py .
 #	python3 -m debug ./script.py
 
+from __future__ import absolute_import
+
 import os
 import sys
 

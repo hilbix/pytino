@@ -3,6 +3,8 @@
 # vim:set ts=8:
 # see https://github.com/openssh/openssh-portable/blob/master/sftp.h
 
+from __future__ import absolute_import
+
 _VERSION	= 3
 
 import pytino.reg

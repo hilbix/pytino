@@ -1,6 +1,8 @@
 # Python introspection to some standard libraries and more
 # Warning, this is somewhat slow at init time, but later very fast
 
+from __future__ import absolute_import
+
 import pytino
 
 def _impl(_get):

@@ -1,5 +1,7 @@
 # Pythonic closures
 
+from __future__ import absolute_import
+
 def startswith(prefix):
         """returns a closure which returns true when the passed string matches prefix"""
         return lambda s: s.startswith(prefix)

@@ -4,6 +4,8 @@
 # run this like
 # python -m pytino/introspection/fast
 
+from __future__ import absolute_import
+
 from pytino import clo
 from pytino import introspection
 

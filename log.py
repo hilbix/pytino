@@ -33,6 +33,7 @@
 # log.err('this', 'is', 'shown', 'if',loglevel='ERROR',_or_='below')
 # Note: Sequence of KWs cannot be maintained!
 
+from __future__ import absolute_import
 from __future__ import print_function
 
 import os

@@ -2,6 +2,8 @@
 #
 # vim:set ts=8:
 
+from __future__ import absolute_import
+
 import re
 import itertools
 import pytino.log as log
