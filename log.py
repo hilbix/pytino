@@ -154,10 +154,10 @@ def formatter(form=None):
 	logging.getLogger().setFormatter(form)
 
 
-def sane(name, level=None):
+def setup(name, level=None):
 	'''
 	From main run:
-		log.sane(__file__)
+		log.setup(__file__)
 	Optional argument "level" defaults to logging.INFO.
 		The default value is only used if not overridden in environment.
 		If 0 (NONE), logging (via this module) is entirely disabled.
@@ -311,7 +311,7 @@ def twisted(*args, **kw):
 	ts.currentframe =	_removeWrapperFrames(ts.currentframe, same=True)
 
 	if args or kw:
-		sane(*args, **kw)
+		setup(*args, **kw)
 
 	ll("Twisted logging enabled")
 
