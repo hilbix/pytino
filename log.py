@@ -19,8 +19,8 @@
 # In __main__:
 #
 # import pytino.log as log
-# #log.sane('name', log.ALL)	# for full debugging
-# log.sane('name', log.ERROR)	# default is log.INFO
+# #log.setup('name', log.ALL)	# for full debugging
+# log.setup('name', log.ERROR)	# default is log.INFO
 # log.warn('hello', 'world')	# not shown for log.ERROR
 #
 # log.twisted()			# if you use twisted
@@ -32,28 +32,39 @@
 # log.warn(*['suppressed', 'by','__LOGLEVEL__'])
 # log.err('this', 'is', 'shown', 'if',loglevel='ERROR',_or_='below')
 # Note: Sequence of KWs cannot be maintained!
+#
+# Also you can do:
+#
+# from pytino.log import setup as logsetup
+#
+# log = logsetup('name').info	# logsetup('name',logsetup.ALL) for ALL etc.
+# log('whatever')
 
-from __future__ import absolute_import
-from __future__ import print_function
+# ignore the "as", it is to hide away the globals
+from __future__ import absolute_import as _absolute_import
+from __future__ import print_function as _print_function
 
-import os
-import sys
-import time
-import logging
+import os as _os
+import sys as _sys
+import time as _time
+import logging as _logging
+
 
 # This is a log wrapper
-__LOGWRAPPER__	= logging
-
-disabled = False
+__LOGWRAPPER__	= _logging
 
 # WTF?  Why is this missing?
-__module__ = sys.modules[__name__]
+__module__	= _sys.modules[__name__]
 
+# Define some constants
 _SANEFORMAT	= '%(asctime)s %(levelname)s %(name)s %(module)s:%(lineno)s %(funcName)s %(message)s'
 _FULLFORMAT	= '%(asctime)s %(levelname)s %(name)s %(pathname)s:%(lineno)s %(funcName)s %(message)s'
 _SANEDATE	= '%Y%m%d-%H%M%S'
 
-__DEBUGGING__	= False
+# Set some global runtime variables
+__DEBUGGING__	= __name__ == '__main__'
+_disabled	= False
+_level		= None
 
 
 # missing environment test
@@ -69,39 +80,45 @@ def __setup__():	# Do not pollute globals()
 		PYTHON_LOG_DEBUG:	use full name to filenames in log and further debugging
 	There is a special level 'NONE', which disables logger via this module.
 	'''
+	# ensure this is called only once
 	__module__.__setup__ = lambda: None
-	if hasattr(logging, '__LOGWRAPPER__') and logging.__LOGWRAPPER__ == logging: return
+	if hasattr(_logging, '__LOGWRAPPER__') and _logging.__LOGWRAPPER__ == _logging: return
 
 	#
 	# Below only runs once:
 	#
 
-	logging.addLevelName(1, 'ALL')	# sad: this does not define logging.ALL
-	logging.ALL	= 1
+	_logging.addLevelName(0, 'NONE')	# sad: this does not define logging.ALL
+	_logging.addLevelName(1, 'ALL')		# sad: this does not define logging.ALL
+	_logging.ALL	= 1			# WTF? addLevelName() forgets this?
+	_logging.NONE	= 0			# sad: this only works with this module here
 
 	# Now fix some of the most obvious fatal design errors in logging
 	# WTF?  Blanks in a column of traditionally blank separated fields?
 	# Patch in some underscore, and write it uppercase as other levels.
 
-	if getattr(logging, '_levelToName', None) and getattr(logging, '_nameToLevel', None):
-		logging.getLevelName = lambda level: logging._levelToName.get(level, logging._nameToLevel.get(level, ("LEVEL_%s" % level)))
+	if getattr(_logging, '_levelToName', None) and getattr(_logging, '_nameToLevel', None):
+		_logging.getLevelName = lambda level: _logging._levelToName.get(level, _logging._nameToLevel.get(level, ("LEVEL_%s" % level)))
 	else:
-		logging.getLevelName = lambda level: logging._levelNames.get(level, ("LEVEL_%s" % level))
+		_logging.getLevelName = lambda level: _logging._levelNames.get(level, ("LEVEL_%s" % level))
+
+	# possibly needed in setup()
+	__module__._o_curframe_	= _logging.currentframe
 
 	# Eliminate stackframes from (this and possibly other) wrapper modules
-	logging.__LOGWRAPPER__	= logging
-	logging.currentframe	= _removeWrapperFrames(logging.currentframe)
-	logging.Logger._log	= _ignoreNoLoggingException(logging.Logger._log)
+	_logging.__LOGWRAPPER__	= _logging
+	_logging.currentframe	= _removeWrapperFrames(_logging.currentframe)
+	_logging.Logger._log	= _ignoreNoLoggingException(_logging.Logger._log)
 
-	if os.getenv('PYTHON_LOG_DEBUG'):
+	if _os.getenv('PYTHON_LOG_DEBUG'):
 		__module__.__DEBUGGING__	= True
 
-	logging.basicConfig(datefmt=_SANEDATE, format=os.getenv('PYTHON_LOG_FORMAT') or __module__.__DEBUGGING__ and _FULLFORMAT or _SANEFORMAT)
+	_logging.basicConfig(datefmt=_SANEDATE, format=_os.getenv('PYTHON_LOG_FORMAT') or __module__.__DEBUGGING__ and _FULLFORMAT or _SANEFORMAT)
 
 	# Why isn't there an ENV var which let us overwrite the level?
 	# Why has this to be done by yourself, parsing options or even more crappy?
 	lvl	= None
-	env	= os.getenv('PYTHON_LOG_LEVEL')
+	env	= _os.getenv('PYTHON_LOG_LEVEL')
 	if env:
 		try:	lvl = int(env)
 		except:	lvl = getattr(__module__, env, None)
@@ -111,35 +128,60 @@ def __setup__():	# Do not pollute globals()
 
 	# BUG: Timezone is missing in timestamps by default (the ISO8601 isn't ISO8601 compliant)
 	# Logging shall always be done in UTC, to be able to compare server times
-	logging.Formatter.converter = time.gmtime  # stackoverflow.com/questions/6321160
+	_logging.Formatter.converter = _time.gmtime	# stackoverflow.com/questions/6321160
 
 	# Why isn't this the default since Python 0.0?
 	# Why does only work for Python 2.7 and above?
-	try: logging.captureWarnings(True)
+	try: _logging.captureWarnings(True)
 	except: pass
 
-	env = os.getenv('PYTHON_LOG_FILE')
+	env = _os.getenv('PYTHON_LOG_FILE')
 	if env:
-		logging.getLogger().addHandler(logging.FileHandler(env,'a'))
+		_logging.getLogger().addHandler(_logging.FileHandler(env,'a'))
+
+	# inject everything into everything
+	# such that even if you get some .info as logging routine,
+	# you can still can switch over to .warn etc.
+	names = { name:getattr(__module__,name) for name in __module__.__dict__ if not name.startswith('_') }
+	for a in names:
+		o	= getattr(__module__, a)
+		if callable(o):
+			for k,v in names.items():
+				setattr(o, k, v)
 
 
 # barely tested
-def level(level):
+def level(level=None):
 	'''
-	Set the logging level to something else.
+	Get or set the logging level to something else.
 	If set to 0 (NONE), logging is entirely disabled.
 	If it is lower than a module's __LOGLEVEL__,
 	the latter wins on the module scale.
 	'''
 	if level == NONE or level == 'NONE':
-		disabled	= True
-		level		= 99
+		__module__._disabled	= True
+		level			= 99999
 	elif level:
-		disabled	= False
+		__module__._disabled	= False
 	if level:
 		# Are we really in Java here?  Pretty looks like it: WTF!
-		logging.getLogger().setLevel(level)
+		_logging.getLogger().setLevel(level)
+		__module__._level	= level
 
+	return not __module__._disabled and __module__._level or NONE
+
+
+def levelName(level=None):
+	if level is None:
+		level	= __module__.level()
+	return _logging.getLevelName(level)
+
+
+def disabled():
+	"""
+	returns true if logging is disabled
+	"""
+	return __module__._disabled
 
 # untested
 def formatter(form=None):
@@ -149,12 +191,12 @@ def formatter(form=None):
 	If new formatter is None or not given, switch back to sane format.
 	'''
 	if form is None:
-		form = logging.Formatter(_SANEFORMAT, _SANEDATE)
+		form = _logging.Formatter(_SANEFORMAT, _SANEDATE)
 	# This strongly reminds me to the minecraft.forge style:
-	logging.getLogger().setFormatter(form)
+	_logging.getLogger().setFormatter(form)
 
 
-def setup(name, level=None):
+def setup(name=None, level=None):
 	'''
 	From main run:
 		log.setup(__file__)
@@ -162,10 +204,16 @@ def setup(name, level=None):
 		The default value is only used if not overridden in environment.
 		If 0 (NONE), logging (via this module) is entirely disabled.
 	'''
+
+	if name is None:
+		# try to deduce the correct name from the caller of setup()
+		name	= __module__._o_curframe_().f_code.co_filename
+
 	# Zap the 'root' in favor of the set name (why is there no .setName()?)
-	logging.getLogger().name = name
+	_logging.getLogger().name = name
 	__module__.level(level)
 
+	# returns the logging module itself
 	return __module__
 
 
@@ -184,14 +232,18 @@ def xlog(__LOGLEVEL__, s, *args, **kw):
 	For more see:
 		https://docs.python.org/3/library/logging.html#logging.log
 	'''
-	if disabled: return
+	if __module__._disabled: return
+
+#	print(__LOGLEVEL__, s, args, kw)
 
 	# module.__LOGLEVEL__ support hacked in here.
 	# This probably only works with modules,
 	# which use pytino.log, of course.
 	try:
-		logging.log(__LOGLEVEL__, str(s).rstrip(' \t\n\r'), *args, **kw)
+		_logging.log(__LOGLEVEL__, str(s).rstrip(' \t\n\r'), *args, **kw)
+#		if __module__.__DEBUGGING__: print('oh, baby, try')
 	except _NoLoggingException:
+#		if __module__.__DEBUGGING__: print('eye to eye')
 		pass
 
 
@@ -202,7 +254,7 @@ def log(level, *args, **kw):
 	All arguments given are just output in the log.
 	No hidden pitfalls or similar.
 	'''
-	if disabled: return
+	if __module__._disabled: return
 	j = []
 	for v in args:
 		try:
@@ -246,12 +298,13 @@ def _removeWrapperFrames(currentframe, same=True):
 		f	= c
 		l	= 0
 		while not f is None:
-			if not f.f_globals.get('__LOGWRAPPER__', None) is logging:
+			if not f.f_globals.get('__LOGWRAPPER__', None) is _logging:
 				if f.f_globals.get('__LOGLEVEL__', 0) > l > 0:
+#					if __module__.__DEBUGGING__: print('hush hush')
+					print("meep")
 					raise _NoLoggingException()
 				if same:	c = f
-#				if __module__.__DEBUGGING__ and c.f_code:
-#					print('@DEBUG@log@', c.f_code.co_filename, file=sys.stderr)
+#				if __module__.__DEBUGGING__ and c.f_code: print('@DEBUG@log@', c.f_code.co_filename, file=_sys.stderr)
 				return c
 			l = f.f_locals.get('__LOGLEVEL__', l)
 			p = c
@@ -263,6 +316,7 @@ def _removeWrapperFrames(currentframe, same=True):
 	return wrap
 
 
+# This can be used as a decorator
 def _ignoreNoLoggingException(_log):
 	'''
 	Wrap a logging function such, that _NoLoggingException is ignored.
@@ -305,7 +359,7 @@ def twisted(*args, **kw):
 
 	# Ignore all those in logging
 	for a in (t0, t1, t2, t3, ts, p0, p1):
-		a.__LOGWRAPPER__	= logging
+		a.__LOGWRAPPER__	= _logging
 
 	# Patch in our stackframe hack
 	ts.currentframe =	_removeWrapperFrames(ts.currentframe, same=True)
@@ -320,11 +374,11 @@ def twisted(*args, **kw):
 
 NONE	= 0
 ALL	= 1
-DEBUG	= logging.DEBUG
-INFO	= logging.INFO
-WARNING	= logging.WARNING
-ERROR	= logging.ERROR
-FATAL	= logging.FATAL
+DEBUG	= _logging.DEBUG
+INFO	= _logging.INFO
+WARNING	= _logging.WARNING
+ERROR	= _logging.ERROR
+FATAL	= _logging.FATAL
 
 
 # And here some convenience wrappers:
@@ -332,12 +386,42 @@ FATAL	= logging.FATAL
 # if you need stackframes etc. use xlog()!
 def ll   (*args, **kw):	log(ALL,     *args, **kw)
 def debug(*args, **kw):	log(DEBUG,   *args, **kw)
-def info (*args, **kw):	log(INFO,    *args, **kw)
-def warn (*args, **kw):	log(WARNING, *args, **kw)
-def err  (*args, **kw):	log(ERROR,   *args, **kw)
-def fatal(*args, **kw):	log(FATAL,   *args, **kw)
+def info (*args, **kw):	__module__.log(__module__.INFO,    *args, **kw)
+def warn (*args, **kw):	__module__.log(__module__.WARNING, *args, **kw)
+def err  (*args, **kw):	__module__.log(__module__.ERROR,   *args, **kw)
+def fatal(*args, **kw):	__module__.log(__module__.FATAL,   *args, **kw)
 
 
 # Do all the patching stuff, once for a lifetime.
 __setup__()
+
+
+def _test():
+	sep	= lambda: print('---------------------------------------------------------')
+
+	# reveal me
+	# well, this reveals the innermost function here
+	# which is "xlog", but this is for testing only anyway.
+	__module__.__LOGWRAPPER__	= None
+
+	log	= fatal
+
+	sep()
+	print(log.__dict__)
+
+	sep()
+	log.setup()
+	print(log.level(), log.levelName(), log.disabled())
+	log("this can be seen")
+
+	sep()
+	log.setup('test', NONE)
+	print(log.level(), log.levelName(), log.disabled())
+	log("this cannot be seen")
+
+	sep()
+
+
+if __name__=='__main__':
+	_test()
 
