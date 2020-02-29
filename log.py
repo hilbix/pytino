@@ -301,7 +301,6 @@ def _removeWrapperFrames(currentframe, same=True):
 			if not f.f_globals.get('__LOGWRAPPER__', None) is _logging:
 				if f.f_globals.get('__LOGLEVEL__', 0) > l > 0:
 #					if __module__.__DEBUGGING__: print('hush hush')
-					print("meep")
 					raise _NoLoggingException()
 				if same:	c = f
 #				if __module__.__DEBUGGING__ and c.f_code: print('@DEBUG@log@', c.f_code.co_filename, file=_sys.stderr)
