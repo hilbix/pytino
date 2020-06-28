@@ -24,6 +24,7 @@
 # log.warn('hello', 'world')	# not shown for log.ERROR
 #
 # log.twisted()			# if you use twisted
+# log.asyncio()			# if you use asyncio (makes logging using async)
 #
 # In modules:
 #
@@ -70,7 +71,7 @@ _level		= None
 # missing environment test
 def __setup__():	# Do not pollute globals()
 	'''
-	Only runs once when this module is first included.
+	Thos only runs once when this module is first included.  You cannot call it.
 	It sets up everything properly and calls logging.basicConfig() for you.
 	If you want something else, you can call logging.basicConfig() before.
 	Environment:
@@ -88,10 +89,10 @@ def __setup__():	# Do not pollute globals()
 	# Below only runs once:
 	#
 
-	_logging.addLevelName(0, 'NONE')	# sad: this does not define logging.ALL
-	_logging.addLevelName(1, 'ALL')		# sad: this does not define logging.ALL
-	_logging.ALL	= 1			# WTF? addLevelName() forgets this?
-	_logging.NONE	= 0			# sad: this only works with this module here
+	_logging.addLevelName(NONE, 'NONE')	# sad: this does not define logging.NONE
+	_logging.addLevelName(ALL, 'ALL')	# sad: this does not define logging.ALL
+	_logging.ALL	= ALL			# WTF? addLevelName() forgets this?
+	_logging.NONE	= NONE			# sad: this only works with this module here
 
 	# Now fix some of the most obvious fatal design errors in logging
 	# WTF?  Blanks in a column of traditionally blank separated fields?
@@ -367,6 +368,21 @@ def twisted(*args, **kw):
 		setup(*args, **kw)
 
 	ll("Twisted logging enabled")
+
+	return __module__
+
+
+def asyncio(*args, **kw):
+	'''
+	Enable this module for asyncio logging.
+
+	NOT YET READY (logging is blocking)
+	'''
+
+	if args or kw:
+		setup(*args, **kw)
+
+	ll("AsyncIO logging enabled")
 
 	return __module__
 
